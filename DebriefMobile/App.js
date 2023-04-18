@@ -76,7 +76,8 @@ const App = () => {
     };
   }, [appState]);
 
-  SUMMARY_API_URL = "http://192.168.0.233:5000/summary";
+  // change the URL to your own API endpoint
+  SUMMARY_API_URL = "http://192.168.1.91:5000/summary";
 
   const fetchSummary = async (persona) => {
     try {
@@ -88,11 +89,14 @@ const App = () => {
         body: JSON.stringify({ persona: persona })
       });
       const data = await response.json();
-      setText(data.summary);
+      const cleanedSummary = data.summary.trim();
+      setText(cleanedSummary);
+      console.log(cleanedSummary);
     } catch (error) {
       console.error("Error fetching summary:", error);
     }
   };
+  
   
 
   // Add a new state variable 'text' to the App component, initialized to an empty string:

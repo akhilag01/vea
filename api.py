@@ -17,5 +17,6 @@ def generate_summary():
         print(f"Error: {str(e)}")
         return jsonify({"status": "error", "message": str(e)})
 
+# change based on ip address of your machine
 if __name__ == "__main__":
-    app.run(host="192.168.0.233", port=5000)
+    app.run(host="192.168.1.91", port=5000)
