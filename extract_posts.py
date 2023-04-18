@@ -6,6 +6,8 @@ from pyarrow import feather
 import json
 import requests
 import bs4
+import argparse
+
 
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate, ChatPromptTemplate
@@ -20,13 +22,22 @@ from langchain.prompts import (
 )
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
 
-ATLAS_TEST_API_KEY = "soH2CVoStCGvI5wW4vSVRFszgpPgImpnuHfiWewTBce_H"
-project_name = "headline_data"
+ATLAS_TEST_API_KEY = "Gqpc4gaUpPCh45uGQcCxoBtMiNfTjRMr0V-yIsYnhvC_0"
+project_name = "headline_data_3"
 
 login(ATLAS_TEST_API_KEY)
 
 
+def run_with_truncated_input(chain, headline, preference_string, max_length=100):
+    truncated_headline = headline[:max_length]
+    return chain.run(headline=truncated_headline, preference_string=preference_string)
+
+# ...
+
+
+
 def get_summary(persona):
+    
     atlas = AtlasProject(
         name="headline_data_3",
     )
@@ -46,7 +57,7 @@ def get_summary(persona):
 
     headlines = atlas.get_data(ids)
 
-    os.environ["OPENAI_API_KEY"] = "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"
+    os.environ["OPENAI_API_KEY"] = "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"
 
     llm = OpenAI(temperature=0.9)
 
@@ -76,12 +87,11 @@ def get_summary(persona):
     with open("candidate_headlines.json", "w") as f:
         json.dump(headlines, f)
 
-    print(len(headlines))
-
     import concurrent.futures
 
     def process_headline(headline):
-        test = chain1.run(
+        test = run_with_truncated_input(
+            chain1,
             headline=headline["embed_text"],
             preference_string=persona,
         )
@@ -103,8 +113,59 @@ def get_summary(persona):
         return relevant_headlines
 
     relevant_headlines = parallelize_function(headlines)
+    print(len(relevant_headlines))
+
+
+    def rank_headlines(headlines, persona, llm, max_headlines=5):
+        system_message = "You are an AI system which ranks the relevance of headlines based on an individual's stated preferences."
+        system_message_prompt = SystemMessagePromptTemplate.from_template(system_message)
+        human_template = """
+        Below are the headlines:
+        {headlines}
+
+        Below is the individual's stated preference:
+        {preference_string}
+
+        Rank the headlines based on their relevance to the individual's preference, with 1 being the most relevant and N being the least relevant. If there are more than {max_headlines} headlines, only return the top {max_headlines} headlines.
+        """
+        human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+
+        chat_prompt = ChatPromptTemplate.from_messages(
+            messages=[system_message_prompt, human_message_prompt]
+        )
+
+        chain_rank = LLMChain(llm=llm, prompt=chat_prompt)
+
+        formatted_headlines = "\n".join([f"{i+1}. {headline['embed_text']}" for i, headline in enumerate(headlines)])
+        
+        rankings = chain_rank.run(
+            headlines=formatted_headlines,
+            preference_string=persona,
+            max_headlines=max_headlines,
+        )
+
+        ranked_headlines = []
+        for line in rankings.split("\n"):
+            try:
+                rank, headline = line.split(". ", 1)
+                index = int(rank) - 1
+                ranked_headlines.append(headlines[index])
+            except (ValueError, IndexError):
+                continue
+
+            if len(ranked_headlines) >= max_headlines:
+                break
+
+        return ranked_headlines
+    
+    if(len(relevant_headlines) > 5):
+        relevant_headlines = rank_headlines(relevant_headlines, persona, llm)
 
     print(len(relevant_headlines))
+
+
+
+
 
     # save relevant headlines to json
     with open("relevant_headlines.json", "w") as f:
@@ -119,15 +180,11 @@ def get_summary(persona):
             headline["feed_title"] != "Twitter Feed"
             and headline["feed_title"] != "Reddit Feed"
         ):
-            print(headline["embed_text"])
-            print(headline["feed_title"])
-            print(headline["link"])
             # use beautiful soup to get the article text from the headline link
             r = requests.get(headline["link"])
             soup = bs4.BeautifulSoup(r.text, "html.parser")
             article = soup.text
             headline["article"] = article
-            print(article)
 
     # save relevant headlines with article to json
     with open("relevant_headlines_with_article.json", "w") as f:
@@ -138,25 +195,21 @@ def get_summary(persona):
             headline["feed_title"] != "Twitter Feed"
             and headline["feed_title"] != "Reddit Feed"
         ):
-            print(headline["embed_text"])
-            print(headline["feed_title"])
-            print(headline["link"])
             # use beautiful soup to get the article text from the headline link
             r = requests.get(headline["link"])
             soup = bs4.BeautifulSoup(r.text, "html.parser")
             article = soup.text
             headline["article"] = article
-            print(article)
 
     # # for the remianing, we get the full article and summerize it
 
-    system_message = "You are an AI system which writes a summary of an article, tweet, or other source of information."
+    system_message = "You are an AI system which writes a summary of an article, tweet, or other source of information. The summary should be succinct and no more than 2 sentences, but generate the key insights of the article. Do not describe the source itself, but rather, the key news of the source. Explain the piece of content as though I had no background about it and provide context."
     system_message_prompt = SystemMessagePromptTemplate.from_template(system_message)
     human_template = """
-    Below is the source:
+    Below is the Article:
     {article}
 
-    Write a summary of this source. Do not make up or remove any information from the source. The summary should be succinct and no more than 2 sentences.
+    Write a summary of the Article. Give context to the story, and give the key insights of the content. Do not make up or remove any information from the Article. Do not talk about the news site itself, but retrieve the key insights of the Article story. The summary should be succinct and no more than 2 sentences.
     """
     human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
 
@@ -193,8 +246,9 @@ def get_summary(persona):
     Combine these summaries into a single briefing. Do not make up any information. Only include noteworthy or newsworthy information. The summary should be easily digestible, information rich, and no more than 10 sentences. 
     """
     human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
-
+    #make the input a substring of itself of the first 14000 characters
     chat_prompt = ChatPromptTemplate.from_messages(
+        
         messages=[system_message_prompt, human_message_prompt]
     )
 
@@ -213,3 +267,23 @@ def get_summary(persona):
     )
 
     return summary
+
+def main():
+    parser = argparse.ArgumentParser(description="Get a summary based on a persona.")
+    parser.add_argument(
+        "--persona",
+        type=str,
+        required=True,
+        help="A string describing the individual's stated preferences.",
+    )
+
+    args = parser.parse_args()
+    persona = args.persona
+
+    summary = get_summary(persona)
+    print("Combined Summary:")
+    print(summary)
+
+
+if __name__ == "__main__":
+    main()
