@@ -89,7 +89,7 @@ const App = () => {
         body: JSON.stringify({ persona: persona })
       });
       const data = await response.json();
-      const cleanedSummary = data.summary.trim();
+      const cleanedSummary = data.summary.replace(/\n+/g, ' ').trim();
       setText(cleanedSummary);
       console.log(cleanedSummary);
     } catch (error) {
@@ -129,7 +129,8 @@ const App = () => {
               onPress={async () => {
                 console.log(userText);
                 setModalVisible(!modalVisible);
-                setShowFirstLottie(true);
+                setShowSecondLottie(true);
+                setShowFirstLottie(false);
                 await fetchSummary(userText);
                 setTimeout(() => {
                   setShowSecondLottie(false);
