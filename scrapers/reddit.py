@@ -11,7 +11,7 @@ reddit = praw.Reddit(
 )
 
 # Define list of subreddits to scrape
-subreddit_list = ['csmajors', 'tech', 'GPT3', 'cscareers', 'mildlyinfuriating']
+subreddit_list = ['csmajors', 'tech', 'GPT3','politics', 'finance', 'worldnews', 'news', 'science']
 
 # Initialize the JSON data structure
 reddit_data = {

@@ -1,93 +1,13 @@
+import os
+import json
+import uuid
 from langchain.vectorstores import AtlasDB
 from langchain.embeddings.openai import OpenAIEmbeddings
 import nomic
-
-import json
-import uuid
-
-
-# embeddings = OpenAIEmbeddings()
-
-# text = "This is a test document."
-
-# query_result = embeddings.embed_query(text)
-
-# doc_result = embeddings.embed_documents([text])
-
-# print(query_result)
-# print(doc_result)
-
-# embeddings = OpenAIEmbeddings()
-# vectorstore = AtlasDB(
-#     "headline_data",
-#     None,
-#     "soH2CVoStCGvI5wW4vSVRFszgpPgImpnuHfiWewTBce_H",
-#     is_public=True,
-#     reset_project_if_exists=True,
-# )
-
-nomic.login("Gqpc4gaUpPCh45uGQcCxoBtMiNfTjRMr0V-yIsYnhvC_0")
-
-vectorstore = nomic.AtlasProject(
-    name="headline_data_3",
-    reset_project_if_exists=True,
-    is_public=True,
-    unique_id_field="id_field",
-    modality="text",
-)
-
-
-import uuid
-import json
-
-
-from langchain.vectorstores import AtlasDB
-from langchain.embeddings.openai import OpenAIEmbeddings
-import nomic
-
-import json
-import uuid
-
-
-# embeddings = OpenAIEmbeddings()
-
-# text = "This is a test document."
-
-# query_result = embeddings.embed_query(text)
-
-# doc_result = embeddings.embed_documents([text])
-
-# print(query_result)
-# print(doc_result)
-
-# embeddings = OpenAIEmbeddings()
-# vectorstore = AtlasDB(
-#     "headline_data",
-#     None,
-#     "soH2CVoStCGvI5wW4vSVRFszgpPgImpnuHfiWewTBce_H",
-#     is_public=True,
-#     reset_project_if_exists=True,
-# )
-
-nomic.login("Gqpc4gaUpPCh45uGQcCxoBtMiNfTjRMr0V-yIsYnhvC_0")
-
-vectorstore = nomic.AtlasProject(
-    name="headline_data_3",
-    reset_project_if_exists=True,
-    is_public=True,
-    unique_id_field="id_field",
-    modality="text",
-)
-
-
-import uuid
-import json
-
 
 def datafile_to_embedding_data(filename):
     with open(filename, "r") as f:
         data = json.load(f)
-    print(filename)
 
     if isinstance(data, list):
         items = data
@@ -110,70 +30,35 @@ def datafile_to_embedding_data(filename):
             "pubDate": x["pubDate"] if "pubDate" in x else "",
             "feed_title": feed_title,
             "feed_link": feed_link,
+            "image_link": x["image"] if "image" in x else "",  # Add image link to metadata
         }
         for x in items
     ]
     return metadata
 
+nomic.login("Gqpc4gaUpPCh45uGQcCxoBtMiNfTjRMr0V-yIsYnhvC_0")
 
-
-# cnn_metadata = datafile_to_embedding_data("data_sources/cnn_rss_data.json")
-# techcrunch_metadata = datafile_to_embedding_data(
-#     "data_sources/techcrunch_rss_data.json"
-# )
-
-
-# for each file in data_sources load the json and add it to the vectorstore
-import os
-
-for filename in os.listdir("data_sources"):
-    if filename.endswith(".json"):
-        metadata = datafile_to_embedding_data(os.path.join("data_sources", filename))
-        vectorstore.add_text(data=metadata)
-
-# add the following files in the same manner scrapers/hn.json, scrapers/reddit.json, scrapers/tweets.json
-files = [
-    "scrapers/hn.json",
-    "scrapers/reddit_posts.json",
-    "scrapers/tweets.json",
-]
-for filename in files:
-    metadata = datafile_to_embedding_data(filename)
-    vectorstore.add_text(data=metadata)
-
-vectorstore.create_index(
-    name="v1.1",
-    indexed_field="embed_text",
-    build_topic_model=True,
-    topic_label_field="embed_text",
-    colorable_fields=["feed_title", "id_field"],
+vectorstore = nomic.AtlasProject(
+    name="headline_news_6",
+    reset_project_if_exists=False,
+    is_public=True,
+    unique_id_field="id_field",
+    modality="text",
 )
 
+# Embed only all_rss_data.json
+metadata = datafile_to_embedding_data("data_sources/all_rss_data.json")
+vectorstore.add_text(data=metadata)
+metadata = datafile_to_embedding_data("data_sources/us.json")
+vectorstore.add_text(data=metadata)
 
-
-# cnn_metadata = datafile_to_embedding_data("data_sources/cnn_rss_data.json")
-# techcrunch_metadata = datafile_to_embedding_data(
-#     "data_sources/techcrunch_rss_data.json"
-# )
-
-
-# for each file in data_sources load the json and add it to the vectorstore
-import os
-
-for filename in os.listdir("data_sources"):
-    if filename.endswith(".json"):
-        metadata = datafile_to_embedding_data(os.path.join("data_sources", filename))
-        vectorstore.add_text(data=metadata)
-
-# add the following files in the same manner scrapers/hn.json, scrapers/reddit.json, scrapers/tweets.json
-files = [
-    "scrapers/hn.json",
-    "scrapers/reddit_posts.json",
-    "scrapers/tweets.json",
-]
-for filename in files:
-    metadata = datafile_to_embedding_data(filename)
-    vectorstore.add_text(data=metadata)
+#files = [
+    #"scrapers/hn.json",
+    #"scrapers/reddit_posts.json",
+#]
+#for filename in files:
+    #metadata = datafile_to_embedding_data(filename)
+    #vectorstore.add_text(data=metadata)
 
 vectorstore.create_index(
     name="v1.1",

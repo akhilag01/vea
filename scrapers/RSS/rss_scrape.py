@@ -3,7 +3,9 @@
 # for each page find all the td elements with class "cat-col-1" and get the href within
 
 import requests
+import requests.exceptions
 from bs4 import BeautifulSoup
+import json
 
 
 def get_rss_links():
@@ -47,47 +49,68 @@ def save_urls(urls, filename):
             f.write("\n")
 
 
-# given a rss url, get the headline and description from the feed for itemn from the last 24 hours
+def get_image_url(description):
+    soup = BeautifulSoup(description, "html.parser")
+    img = soup.find("img")
+    if img and img.has_attr("src"):
+        return img["src"]
+    return None
+
 def rss_data_from_url(url):
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        print(f"Error accessing URL {url}: {str(e)}")
+        return None
+    
     soup = BeautifulSoup(r.text, "lxml-xml")
     data = []
     for item in soup.find_all("item"):
-        # print(item.title.text)
-        # print(item.description.text if item.description else "")
-        # data.append((item.title.text, item.description.text))
         description = ""
         if item.description:
             description = item.description.text
-        # if description starts with < then treat it as html and extract the text
         if description.startswith("<"):
             description = BeautifulSoup(description, "html.parser").text
-            # also replace the \u#### with the actual character
-        print(description)
         description = description.encode("unicode_escape").decode("utf-8")
-        print(description)
+
+        image_url = get_image_url(item.description.text if item.description else "")
+
         data.append(
             {
-                "title": item.title.text,
+                "title": item.title.text if item.title else "",
                 "description": description,
-                "link": item.link.text,
+                "link": item.link.text if item.link else "",
                 "pubDate": item.pubDate.text if item.pubDate else "",
+                "image_url": image_url,
             }
         )
     return {
-        "title": soup.title.text,
-        "link": soup.link.text,
+        "title": soup.title.text if soup.title else "",
+        "link": soup.link.text if soup.link else "",
         "items": data,
     }
 
 
-if __name__ == "__main__":
-    links = get_usa_rss_links()
-    save_urls(links, "scrapers/RSS/tech_news_rss_links.txt")
-    for link in links[0:5]:
-        # save to file
-        rss_data = rss_data_from_url(link)
-        with open(f"data_sources/{rss_data['title']}_rss_data.json", "w") as f:
-            import json
 
-            json.dump(rss_data, f)
+def read_rss_links_from_file(filename):
+    with open(filename, "r") as f:
+        links = [line.strip() for line in f.readlines()]
+    return links
+
+
+
+if __name__ == "__main__":
+    links = read_rss_links_from_file("scrapers/RSS/us_news_rss_links.txt")
+
+    all_rss_data = []
+
+    for link in links:  # process all links in the list
+        if link.startswith("http://") or link.startswith("https://"):
+            rss_data = rss_data_from_url(link)
+            if rss_data:
+                all_rss_data.append(rss_data)
+        else:
+            print(f"Skipping invalid URL: {link}")
+
+    with open("data_sources/us.json", "w") as f:
+        json.dump(all_rss_data, f)

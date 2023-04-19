@@ -13,8 +13,8 @@ ACCESS_TOKEN_SECRET = "xEOKzYLpQw7vYnqeYbzJAoBUrQWI8cRH8fJ9hU72tI0OR"
 # Set up the endpoint URL and query parameters
 endpoint_url = "https://api.twitter.com/2/tweets/search/recent"
 query_params = {
-    'query': '(politics OR "technology" OR "news" OR "ai" OR "machinelearning") -is:retweet -is:reply',
-    'max_results': '100',
+    'query': '("finance" OR "financenews" OR "tech" OR "technews" OR "machinelearningnews" OR "AutoGPT") -is:retweet -is:reply',
+    'max_results': '10000',
     'tweet.fields': 'created_at,public_metrics'
 }
 
