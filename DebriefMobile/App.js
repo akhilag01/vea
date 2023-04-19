@@ -155,6 +155,7 @@ const App = () => {
               onLayout={() => secondLottieRef.current?.play()}
               source={require("./assets/loading.json")}
               loop
+              style={{ width: 175, height: 175 }}
             />
           </TouchableOpacity>
         )}
@@ -168,6 +169,7 @@ const App = () => {
               onLayout={() => lottieRef.current?.play()}
               source={require("./assets/startDebrief.json")}
               loop
+              style={{ width: 275, height: 275 }}
             />
           </TouchableOpacity>
         )}
