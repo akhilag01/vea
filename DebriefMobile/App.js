@@ -118,7 +118,7 @@ const App = () => {
             <TextInput
               style={[
                 styles.input,
-                inputFocused && { borderBottomColor: "#8DBAE2" },
+                inputFocused && { borderBottomColor: "#63A375" },
               ]}
               placeholder="Type your persona here"
               onChangeText={(text) => setUserText(text)}
@@ -143,7 +143,7 @@ const App = () => {
                 style={styles.nextButton}
                 name="arrow-forward"
                 size={45}
-                color="#8DBAE2"
+                color="#63A375"
               />
             </TouchableOpacity>
           </View>
