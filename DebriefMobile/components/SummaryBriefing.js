@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Animated, StyleSheet, Image } from "react-native";
+import { View, Animated, StyleSheet, Image, TouchableOpacity, Linking } from "react-native";
 
 const SummaryBriefing = ({ text, onWordRevealed }) => {
   const words = text.split(" ");
@@ -50,6 +50,19 @@ const SummaryBriefing = ({ text, onWordRevealed }) => {
     }
   };
 
+  const onImagePress = async () => {
+    const url = "https://apple.news/Az-cbeANRSMqqSzmsYnW-7A"; // Replace this with your desired URL
+    try {
+      if (await Linking.canOpenURL(url)) {
+        await Linking.openURL(url);
+      } else {
+        console.warn(`Can't open URL: ${url}`);
+      }
+    } catch (error) {
+      console.error(`Error opening URL: ${error}`);
+    }
+  };
+
   const imageTranslateY = imageAnimatedValue.interpolate({
     inputRange: [0, 1],
     outputRange: [20, 0],
@@ -94,6 +107,7 @@ const SummaryBriefing = ({ text, onWordRevealed }) => {
         );
       })}
       {textWidth && (
+        <TouchableOpacity activeOpacity={0.7} onPress={onImagePress}>
         <Animated.Image
           source={require("../assets/biden.jpg")} // Replace this with the path to your image
           style={[
@@ -101,7 +115,8 @@ const SummaryBriefing = ({ text, onWordRevealed }) => {
             { width: textWidth * .94, height: 200, opacity: imageOpacity, transform: [{ translateY: imageTranslateY }] },
           ]}
           resizeMode="cover"
-          />
+        />
+      </TouchableOpacity>
           )}
           {textWidth && (
             <Animated.Text
