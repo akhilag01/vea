@@ -51,7 +51,7 @@ const SummaryBriefing = ({ text, onWordRevealed }) => {
   };
 
   const onImagePress = async () => {
-    const url = "https://apple.news/Az-cbeANRSMqqSzmsYnW-7A"; // Replace this with your desired URL
+    const url = "https://apple.news/AY4O4NenxRieNqtJIx_gKsw"; // Replace this with your desired URL
     try {
       if (await Linking.canOpenURL(url)) {
         await Linking.openURL(url);
@@ -109,7 +109,7 @@ const SummaryBriefing = ({ text, onWordRevealed }) => {
       {textWidth && (
         <TouchableOpacity activeOpacity={0.7} onPress={onImagePress}>
         <Animated.Image
-          source={require("../assets/biden.jpeg")} // Replace this with the path to your image
+          source={require("../assets/IMG_2134.jpg")} // Replace this with the path to your image
           style={[
             styles.image,
             { width: textWidth * .94, height: 200, opacity: imageOpacity, transform: [{ translateY: imageTranslateY }] },
@@ -125,7 +125,7 @@ const SummaryBriefing = ({ text, onWordRevealed }) => {
                 { width: textWidth, opacity: italicTextOpacity, transform: [{ translateY: italicTextTranslateY }] },
               ]}
             >
-              Biden walking out after WHO conference{/* Replace this with your desired italic text */}
+              Avian influenza requires urgent coordinated response{/* Replace this with your desired italic text */}
             </Animated.Text>
           )}
         </View>

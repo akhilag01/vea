@@ -89,7 +89,6 @@ const App = () => {
         body: JSON.stringify({ persona: persona })
       });
       const data = await response.json();
-      setText(data.summary);
       const cleanedSummary = data.summary.replace(/\n+/g, ' ').trim();
       setText(cleanedSummary);
       console.log(cleanedSummary);

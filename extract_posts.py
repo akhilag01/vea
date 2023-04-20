@@ -7,6 +7,9 @@ import json
 import requests
 import bs4
 import argparse
+import openai
+from urllib.parse import urlparse
+
 
 
 from langchain.llms import OpenAI
@@ -23,9 +26,60 @@ from langchain.prompts import (
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
 
 ATLAS_TEST_API_KEY = "Gqpc4gaUpPCh45uGQcCxoBtMiNfTjRMr0V-yIsYnhvC_0"
-project_name = "headline_data_3"
+project_name = "headline_news_5"
 
 login(ATLAS_TEST_API_KEY)
+
+os.environ["OPENAI_API_KEY"] = "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"
+
+def is_valid_url(url):
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+
+def rank_headlines(headlines, persona, max_headlines=2):
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an AI system which ranks the relevance of headlines based on an individual's stated preferences."
+        },
+        {
+            "role": "user",
+            "content": (
+                "Below are the headlines:\n" +
+                "".join([f"{i+1}. {headline['embed_text']}\n" for i, headline in enumerate(headlines)]) +
+                f"Below is the individual's stated preference:\n{persona}\n\n"
+                f"Rank the headlines based on their relevance to the individual's preference, with 1 being the most relevant and N being the least relevant. If there are more than {max_headlines} headlines, only return the top {max_headlines} headlines."
+            )
+        }
+    ]
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages,
+        temperature=0.9,
+    )
+
+    rankings = response['choices'][0]['message']['content']
+
+    ranked_headlines = []
+    for line in rankings.split("\n"):
+        try:
+            rank, headline = line.split(". ", 1)
+            index = int(rank) - 1
+            ranked_headlines.append(headlines[index])
+        except (ValueError, IndexError):
+            continue
+
+        if len(ranked_headlines) >= max_headlines:
+            break
+
+    return ranked_headlines
+
+
 
 
 def run_with_truncated_input(chain, headline, preference_string, max_length=100):
@@ -33,13 +87,61 @@ def run_with_truncated_input(chain, headline, preference_string, max_length=100)
     return chain.run(headline=truncated_headline, preference_string=preference_string)
 
 # ...
+def get_individual_summary(article):
+    truncated_article = truncate_text(article, 450)
 
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an AI system which writes a summary of an article, tweet, or other source of information."
+        },
+        {
+            "role": "user",
+            "content": f"""
+            Below is the source:
+            {truncated_article}
+
+            Write a summary of this article. Do not make up or remove any information from the article. The summary should be succinct and no more than a sentence.
+            If a source cannot be accessed due to a "Bad Request", "Javascript" or another technical error, such as a 403 error that detected you were a bot that scraped it, please skip it and return just a period
+            """
+        }
+    ]
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages,
+        temperature=0.9,
+    )
+
+    summary = response['choices'][0]['message']['content']
+    return summary
+
+
+
+
+
+def truncate_text(text, word_limit):
+    words = text.split()
+    if len(words) > word_limit:
+        truncated_words = words[:word_limit]
+        truncated_text = " ".join(truncated_words)
+        return truncated_text
+    return text
+
+
+def format_summaries(relevant_headlines):
+    formatted_summaries = []
+    for headline in relevant_headlines:
+        if "summary" in headline:
+            formatted_summary = f"{headline}:\n{headline['summary']}\n\n"
+            formatted_summaries.append(formatted_summary)
+    return "".join(formatted_summaries)
 
 
 def get_summary(persona):
     
     atlas = AtlasProject(
-        name="headline_data_3",
+        name="headline_news_5",
     )
 
     projection = atlas.projections[0]
@@ -87,6 +189,7 @@ def get_summary(persona):
     with open("candidate_headlines.json", "w") as f:
         json.dump(headlines, f)
 
+
     import concurrent.futures
 
     def process_headline(headline):
@@ -113,59 +216,9 @@ def get_summary(persona):
         return relevant_headlines
 
     relevant_headlines = parallelize_function(headlines)
+
     print(len(relevant_headlines))
-
-
-    def rank_headlines(headlines, persona, llm, max_headlines=5):
-        system_message = "You are an AI system which ranks the relevance of headlines based on an individual's stated preferences."
-        system_message_prompt = SystemMessagePromptTemplate.from_template(system_message)
-        human_template = """
-        Below are the headlines:
-        {headlines}
-
-        Below is the individual's stated preference:
-        {preference_string}
-
-        Rank the headlines based on their relevance to the individual's preference, with 1 being the most relevant and N being the least relevant. If there are more than {max_headlines} headlines, only return the top {max_headlines} headlines.
-        """
-        human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
-
-        chat_prompt = ChatPromptTemplate.from_messages(
-            messages=[system_message_prompt, human_message_prompt]
-        )
-
-        chain_rank = LLMChain(llm=llm, prompt=chat_prompt)
-
-        formatted_headlines = "\n".join([f"{i+1}. {headline['embed_text']}" for i, headline in enumerate(headlines)])
-        
-        rankings = chain_rank.run(
-            headlines=formatted_headlines,
-            preference_string=persona,
-            max_headlines=max_headlines,
-        )
-
-        ranked_headlines = []
-        for line in rankings.split("\n"):
-            try:
-                rank, headline = line.split(". ", 1)
-                index = int(rank) - 1
-                ranked_headlines.append(headlines[index])
-            except (ValueError, IndexError):
-                continue
-
-            if len(ranked_headlines) >= max_headlines:
-                break
-
-        return ranked_headlines
     
-    if(len(relevant_headlines) > 5):
-        relevant_headlines = rank_headlines(relevant_headlines, persona, llm)
-
-    print(len(relevant_headlines))
-
-
-
-
 
     # save relevant headlines to json
     with open("relevant_headlines.json", "w") as f:
@@ -179,6 +232,8 @@ def get_summary(persona):
         if (
             headline["feed_title"] != "Twitter Feed"
             and headline["feed_title"] != "Reddit Feed"
+            and headline["link"] != "null"
+            and is_valid_url(headline["link"])
         ):
             # use beautiful soup to get the article text from the headline link
             r = requests.get(headline["link"])
@@ -186,46 +241,7 @@ def get_summary(persona):
             article = soup.text
             headline["article"] = article
 
-    # save relevant headlines with article to json
-    with open("relevant_headlines_with_article.json", "w") as f:
-        json.dump(relevant_headlines, f)
 
-    for headline in relevant_headlines:
-        if (
-            headline["feed_title"] != "Twitter Feed"
-            and headline["feed_title"] != "Reddit Feed"
-        ):
-            # use beautiful soup to get the article text from the headline link
-            r = requests.get(headline["link"])
-            soup = bs4.BeautifulSoup(r.text, "html.parser")
-            article = soup.text
-            headline["article"] = article
-
-    # # for the remianing, we get the full article and summerize it
-
-    system_message = "You are an AI system which writes a summary of an article, tweet, or other source of information. The summary should be succinct and no more than 2 sentences, but generate the key insights of the article. Do not describe the source itself, but rather, the key news of the source. Explain the piece of content as though I had no background about it and provide context."
-    system_message_prompt = SystemMessagePromptTemplate.from_template(system_message)
-    human_template = """
-    Below is the Article:
-    {article}
-
-    Write a summary of the Article. Give context to the story, and give the key insights of the content. Do not make up or remove any information from the Article. Do not talk about the news site itself, but retrieve the key insights of the Article story. The summary should be succinct and no more than 2 sentences.
-    """
-    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
-
-    chat_prompt = ChatPromptTemplate.from_messages(
-        messages=[system_message_prompt, human_message_prompt]
-    )
-
-    chain1 = LLMChain(llm=llm, prompt=chat_prompt)
-
-    for headline in relevant_headlines:
-        # if the headline has the article field, we can summerize it
-        if "article" in headline:
-            test = chain1.run(
-                article=headline["article"],
-            )
-            headline["summary"] = test
 
     # save relevant headlines with article to json
     with open("relevant_headlines_with_article_and_summary.json", "w") as f:
@@ -237,36 +253,24 @@ def get_summary(persona):
 
     # now we want to combine the headlines together
 
-    system_message = "You are an AI system which combines summaries of multiple articles, tweets, or other sources of information into a single briefing."
-    system_message_prompt = SystemMessagePromptTemplate.from_template(system_message)
-    human_template = """
-    Below is a list of summaries of information sources:
-    {summaries}
 
-    Combine these summaries into a single briefing. Do not make up any information. Only include noteworthy or newsworthy information. The summary should be easily digestible, information rich, and no more than 10 sentences. 
-    """
-    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
-    #make the input a substring of itself of the first 14000 characters
-    chat_prompt = ChatPromptTemplate.from_messages(
-        
-        messages=[system_message_prompt, human_message_prompt]
-    )
+    if len(relevant_headlines) > 2:
+        relevant_headlines = rank_headlines(relevant_headlines, persona)
 
-    chain1 = LLMChain(llm=llm, prompt=chat_prompt)
+    for headline in relevant_headlines:
+        if "article" in headline and headline["article"]:
+            summary = get_individual_summary(headline["article"])
+            headline["summary"] = summary
 
-    source_string = "\n\n".join(
-        [
-            f"Source ({headline['feed_title']}):\n"
-            + (headline["summary"] if "summary" in headline else "")
-            for headline in relevant_headlines
-        ]
-    )
 
-    summary = chain1.run(
-        summaries=source_string,
-    )
 
-    return summary
+
+    formatted_summaries = []
+    for headline in relevant_headlines:
+        if "summary" in headline:
+            formatted_summary = f"{headline['embed_text']}:\n{headline['summary']}\n\n"
+            formatted_summaries.append(formatted_summary)
+    return "".join(formatted_summaries)
 
 def main():
     parser = argparse.ArgumentParser(description="Get a summary based on a persona.")

@@ -1,5 +1,5 @@
 {
-  "name": "debriefmobile",
+  "name": "newdebriefmobile",
   "version": "1.0.0",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -9,14 +9,11 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-native-community/datetimepicker": "4.0.0",
-    "expo": "^44.0.6",
-    "expo-font": "~10.0.4",
-    "expo-status-bar": "~1.2.0",
-    "expo-updates": "~0.11.7",
-    "lottie-react-native": "5.0.1",  
-    "react": "17.0.1",
-    "react-native": "0.64.3"
+    "expo": "~48.0.11",
+    "expo-status-bar": "~1.4.4",
+    "lottie-react-native": "5.1.4",
+    "react": "18.2.0",
+    "react-native": "0.71.6"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
