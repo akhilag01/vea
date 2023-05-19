@@ -25,7 +25,7 @@ from langchain.prompts import (
 )
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
 
-ATLAS_TEST_API_KEY = "Gqpc4gaUpPCh45uGQcCxoBtMiNfTjRMr0V-yIsYnhvC_0"
+ATLAS_TEST_API_KEY = ""
 project_name = "headline_news_5"
 
 login(ATLAS_TEST_API_KEY)
