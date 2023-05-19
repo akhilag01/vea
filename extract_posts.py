@@ -30,7 +30,7 @@ project_name = "headline_news_5"
 
 login(ATLAS_TEST_API_KEY)
 
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = ""
 
 def is_valid_url(url):
     try:
